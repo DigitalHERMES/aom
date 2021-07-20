@@ -21,9 +21,6 @@
 #include "av1/encoder/tx_search.h"
 #include "av1/encoder/txb_rdopt.h"
 
-#define PROB_THRESH_DCT_DCT_TX_TYPE 150
-#define PROB_THRESH_TX_TYPE 250
-
 struct rdcost_block_args {
   const AV1_COMP *cpi;
   MACROBLOCK *x;
@@ -424,6 +421,7 @@ static INLINE int64_t pixel_diff_stats(
   int sum = 0;
   sse = aom_sum_sse_2d_i16(diff, diff_stride, visible_cols, visible_rows, &sum);
   if (visible_cols > 0 && visible_rows > 0) {
+    aom_clear_system_state();
     double norm_factor = 1.0 / (visible_cols * visible_rows);
     int sign_sum = sum > 0 ? 1 : -1;
     // Conversion to transform domain
@@ -620,7 +618,7 @@ static AOM_INLINE void get_energy_distribution_fine(
     assert(bw <= 32);
     assert(bh <= 32);
     assert(((bw - 1) >> w_shift) + (((bh - 1) >> h_shift) << 2) == 15);
-    if (cpi->common.seq_params->use_highbitdepth) {
+    if (cpi->common.seq_params.use_highbitdepth) {
       const uint16_t *src16 = CONVERT_TO_SHORTPTR(src);
       const uint16_t *dst16 = CONVERT_TO_SHORTPTR(dst);
       for (int i = 0; i < bh; ++i)
@@ -645,43 +643,43 @@ static AOM_INLINE void get_energy_distribution_fine(
     const BLOCK_SIZE subsize = (BLOCK_SIZE)f_index;
     assert(block_size_wide[bsize] == 4 * block_size_wide[subsize]);
     assert(block_size_high[bsize] == 4 * block_size_high[subsize]);
-    cpi->ppi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[0]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4,
-                                 dst_stride, &esq[1]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2,
-                                 dst_stride, &esq[2]);
-    cpi->ppi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
-                                 dst_stride, &esq[3]);
+    cpi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[0]);
+    cpi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4, dst_stride,
+                            &esq[1]);
+    cpi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2, dst_stride,
+                            &esq[2]);
+    cpi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
+                            dst_stride, &esq[3]);
     src += bh / 4 * src_stride;
     dst += bh / 4 * dst_stride;
 
-    cpi->ppi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[4]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4,
-                                 dst_stride, &esq[5]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2,
-                                 dst_stride, &esq[6]);
-    cpi->ppi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
-                                 dst_stride, &esq[7]);
+    cpi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[4]);
+    cpi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4, dst_stride,
+                            &esq[5]);
+    cpi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2, dst_stride,
+                            &esq[6]);
+    cpi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
+                            dst_stride, &esq[7]);
     src += bh / 4 * src_stride;
     dst += bh / 4 * dst_stride;
 
-    cpi->ppi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[8]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4,
-                                 dst_stride, &esq[9]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2,
-                                 dst_stride, &esq[10]);
-    cpi->ppi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
-                                 dst_stride, &esq[11]);
+    cpi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[8]);
+    cpi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4, dst_stride,
+                            &esq[9]);
+    cpi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2, dst_stride,
+                            &esq[10]);
+    cpi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
+                            dst_stride, &esq[11]);
     src += bh / 4 * src_stride;
     dst += bh / 4 * dst_stride;
 
-    cpi->ppi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[12]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4,
-                                 dst_stride, &esq[13]);
-    cpi->ppi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2,
-                                 dst_stride, &esq[14]);
-    cpi->ppi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
-                                 dst_stride, &esq[15]);
+    cpi->fn_ptr[subsize].vf(src, src_stride, dst, dst_stride, &esq[12]);
+    cpi->fn_ptr[subsize].vf(src + bw / 4, src_stride, dst + bw / 4, dst_stride,
+                            &esq[13]);
+    cpi->fn_ptr[subsize].vf(src + bw / 2, src_stride, dst + bw / 2, dst_stride,
+                            &esq[14]);
+    cpi->fn_ptr[subsize].vf(src + 3 * bw / 4, src_stride, dst + 3 * bw / 4,
+                            dst_stride, &esq[15]);
   }
 
   double total = (double)esq[0] + esq[1] + esq[2] + esq[3] + esq[4] + esq[5] +
@@ -771,13 +769,13 @@ static AOM_INLINE void get_2x2_normalized_sses_and_sads(
 
         if (sse_norm_arr) {
           unsigned int this_sse;
-          cpi->ppi->fn_ptr[tx_bsize_half].vf(this_src, src_stride, this_dst,
-                                             dst_stride, &this_sse);
+          cpi->fn_ptr[tx_bsize_half].vf(this_src, src_stride, this_dst,
+                                        dst_stride, &this_sse);
           sse_norm_arr[row * 2 + col] = (double)this_sse / num_samples_half;
         }
 
         if (sad_norm_arr) {
-          const unsigned int this_sad = cpi->ppi->fn_ptr[tx_bsize_half].sdf(
+          const unsigned int this_sad = cpi->fn_ptr[tx_bsize_half].sdf(
               this_src, src_stride, this_dst, dst_stride);
           sad_norm_arr[row * 2 + col] = (double)this_sad / num_samples_half;
         }
@@ -834,11 +832,11 @@ static AOM_INLINE void PrintTransformUnitStats(
   const uint8_t *const dst =
       &pd->dst.buf[(blk_row * dst_stride + blk_col) << MI_SIZE_LOG2];
   unsigned int sse;
-  cpi->ppi->fn_ptr[tx_bsize].vf(src, src_stride, dst, dst_stride, &sse);
+  cpi->fn_ptr[tx_bsize].vf(src, src_stride, dst, dst_stride, &sse);
   const double sse_norm = (double)sse / num_samples;
 
   const unsigned int sad =
-      cpi->ppi->fn_ptr[tx_bsize].sdf(src, src_stride, dst, dst_stride);
+      cpi->fn_ptr[tx_bsize].sdf(src, src_stride, dst, dst_stride);
   const double sad_norm = (double)sad / num_samples;
 
   fprintf(fout, " %g %g", sse_norm, sad_norm);
@@ -907,8 +905,8 @@ static int64_t get_sse(const AV1_COMP *cpi, const MACROBLOCK *x) {
 
     if (x->skip_chroma_rd && plane) continue;
 
-    cpi->ppi->fn_ptr[bs].vf(p->src.buf, p->src.stride, pd->dst.buf,
-                            pd->dst.stride, &sse);
+    cpi->fn_ptr[bs].vf(p->src.buf, p->src.stride, pd->dst.buf, pd->dst.stride,
+                       &sse);
     total_sse += sse;
   }
   total_sse <<= 4;
@@ -918,6 +916,7 @@ static int64_t get_sse(const AV1_COMP *cpi, const MACROBLOCK *x) {
 static int get_est_rate_dist(const TileDataEnc *tile_data, BLOCK_SIZE bsize,
                              int64_t sse, int *est_residue_cost,
                              int64_t *est_dist) {
+  aom_clear_system_state();
   const InterModeRdModel *md = &tile_data->inter_mode_rd_models[bsize];
   if (md->ready) {
     if (sse < md->dist_mean) {
@@ -1031,7 +1030,7 @@ static AOM_INLINE void PrintPredictionUnitStats(const AV1_COMP *const cpi,
   const double sse_norm = (double)sse / num_samples;
 
   const unsigned int sad =
-      cpi->ppi->fn_ptr[plane_bsize].sdf(src, src_stride, dst, dst_stride);
+      cpi->fn_ptr[plane_bsize].sdf(src, src_stride, dst, dst_stride);
   const double sad_norm =
       (double)sad / (1 << num_pels_log2_lookup[plane_bsize]);
 
@@ -1184,7 +1183,7 @@ static unsigned pixel_dist_visible_only(
   unsigned sse;
 
   if (txb_rows == visible_rows && txb_cols == visible_cols) {
-    cpi->ppi->fn_ptr[tx_bsize].vf(src, src_stride, dst, dst_stride, &sse);
+    cpi->fn_ptr[tx_bsize].vf(src, src_stride, dst, dst_stride, &sse);
     return sse;
   }
 
@@ -1775,6 +1774,7 @@ static void prune_tx_2D(MACROBLOCK *x, BLOCK_SIZE bsize, TX_SIZE tx_size,
 #endif
   if (!nn_config_hor || !nn_config_ver) return;  // Model not established yet.
 
+  aom_clear_system_state();
   float hfeatures[16], vfeatures[16];
   float hscores[4], vscores[4];
   float scores_2D_raw[16];
@@ -1794,6 +1794,7 @@ static void prune_tx_2D(MACROBLOCK *x, BLOCK_SIZE bsize, TX_SIZE tx_size,
   av1_get_horver_correlation_full(diff, diff_stride, bw, bh,
                                   &hfeatures[hfeatures_num - 1],
                                   &vfeatures[vfeatures_num - 1]);
+  aom_clear_system_state();
 #if CONFIG_NN_V2
   av1_nn_predict_v2(hfeatures, nn_config_hor, 0, hscores);
   av1_nn_predict_v2(vfeatures, nn_config_ver, 0, vscores);
@@ -1801,6 +1802,7 @@ static void prune_tx_2D(MACROBLOCK *x, BLOCK_SIZE bsize, TX_SIZE tx_size,
   av1_nn_predict(hfeatures, nn_config_hor, 1, hscores);
   av1_nn_predict(vfeatures, nn_config_ver, 1, vscores);
 #endif
+  aom_clear_system_state();
 
   for (int i = 0; i < 4; i++) {
     float *cur_scores_2D = scores_2D_raw + i * 4;
@@ -1909,6 +1911,7 @@ static AOM_INLINE void get_mean_dev_features(const int16_t *data, int stride,
       total_x_sum += x_sum;
       total_x2_sum += x2_sum;
 
+      aom_clear_system_state();
       const float mean = (float)x_sum / sub_num;
       const float dev = get_dev(mean, (double)x2_sum, sub_num);
       feature[feature_idx++] = mean;
@@ -1941,12 +1944,14 @@ static int ml_predict_tx_split(MACROBLOCK *x, BLOCK_SIZE bsize, int blk_row,
       x->plane[0].src_diff + 4 * blk_row * diff_stride + 4 * blk_col;
   const int bw = tx_size_wide[tx_size];
   const int bh = tx_size_high[tx_size];
+  aom_clear_system_state();
 
   float features[64] = { 0.0f };
   get_mean_dev_features(diff, diff_stride, bw, bh, features);
 
   float score = 0.0f;
   av1_nn_predict(features, nn_config, 1, &score);
+  aom_clear_system_state();
 
   int int_score = (int)(score * 10000);
   return clamp(int_score, -80000, 80000);
@@ -1967,36 +1972,8 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
   // TX_TYPES, only that specific tx type is allowed.
   TX_TYPE txk_allowed = TX_TYPES;
 
-  const FRAME_UPDATE_TYPE update_type =
-      get_frame_update_type(&cpi->ppi->gf_group, cpi->gf_frame_index);
-  int *tx_type_probs;
-#if CONFIG_FRAME_PARALLEL_ENCODE
-  tx_type_probs =
-      (int *)cpi->ppi->temp_frame_probs.tx_type_probs[update_type][tx_size];
-#else
-  tx_type_probs = (int *)cpi->frame_probs.tx_type_probs[update_type][tx_size];
-#endif
-
-  if (is_inter && txfm_params->use_default_inter_tx_type == 1) {
-    if (tx_type_probs[DEFAULT_INTER_TX_TYPE] > PROB_THRESH_DCT_DCT_TX_TYPE) {
-      txk_allowed = DEFAULT_INTER_TX_TYPE;
-    } else {
-      int force_tx_type = 0;
-      int max_prob = 0;
-      for (int i = 1; i < TX_TYPES; i++) {  // find maximum probability.
-        if (tx_type_probs[i] > max_prob) {
-          max_prob = tx_type_probs[i];
-          force_tx_type = i;
-        }
-      }
-      if (max_prob > PROB_THRESH_TX_TYPE)  // force tx type with max prob.
-        txk_allowed = force_tx_type;
-      else if (x->rd_model == LOW_TXFM_RD) {
-        if (plane == 0) txk_allowed = DCT_DCT;
-      }
-    }
-  } else if ((!is_inter && txfm_params->use_default_intra_tx_type) ||
-             (is_inter && txfm_params->use_default_inter_tx_type == 2)) {
+  if ((!is_inter && txfm_params->use_default_intra_tx_type) ||
+      (is_inter && txfm_params->use_default_inter_tx_type)) {
     txk_allowed =
         get_default_tx_type(0, xd, tx_size, cpi->use_screen_content_tools);
   } else if (x->rd_model == LOW_TXFM_RD) {
@@ -2047,6 +2024,10 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
     assert(plane == 0);
     allowed_tx_mask = ext_tx_used_flag;
     int num_allowed = 0;
+    const FRAME_UPDATE_TYPE update_type =
+        get_frame_update_type(&cpi->gf_group, cpi->gf_frame_index);
+    const int *tx_type_probs =
+        cpi->frame_probs.tx_type_probs[update_type][tx_size];
     int i;
 
     if (cpi->sf.tx_sf.tx_type_search.prune_tx_type_using_stats) {
@@ -2117,8 +2098,13 @@ get_tx_mask(const AV1_COMP *cpi, MACROBLOCK *x, int plane, int block,
 
 #if CONFIG_RD_DEBUG
 static INLINE void update_txb_coeff_cost(RD_STATS *rd_stats, int plane,
+                                         int blk_row, int blk_col,
                                          int txb_coeff_cost) {
+  (void)blk_row;
+  (void)blk_col;
   rd_stats->txb_coeff_cost[plane] += txb_coeff_cost;
+  assert(blk_row < TXB_COEFF_COST_MAP_SIZE);
+  assert(blk_col < TXB_COEFF_COST_MAP_SIZE);
 }
 #endif
 
@@ -2677,7 +2663,8 @@ static AOM_INLINE void try_tx_block_no_split(
            RDCOST(x->rdmult, zero_blk_rate, rd_stats->sse));
   if (pick_skip_txfm) {
 #if CONFIG_RD_DEBUG
-    update_txb_coeff_cost(rd_stats, 0, zero_blk_rate - rd_stats->rate);
+    update_txb_coeff_cost(rd_stats, 0, blk_row, blk_col,
+                          zero_blk_rate - rd_stats->rate);
 #endif  // CONFIG_RD_DEBUG
     rd_stats->rate = zero_blk_rate;
     rd_stats->dist = rd_stats->sse;
@@ -2783,6 +2770,7 @@ static AOM_INLINE void get_blk_var_dev(const int16_t *data, int stride, int bw,
       total_x_sum += x_sum;
       total_x2_sum += x2_sum;
 
+      aom_clear_system_state();
       const float mean = (float)x_sum / sub_num;
       const float var = get_var(mean, (double)x2_sum, sub_num);
       mean_sum += mean;
@@ -2819,6 +2807,7 @@ static void prune_tx_split_no_split(MACROBLOCK *x, BLOCK_SIZE bsize,
       x->plane[0].src_diff + 4 * blk_row * diff_stride + 4 * blk_col;
   const int bw = tx_size_wide[tx_size];
   const int bh = tx_size_high[tx_size];
+  aom_clear_system_state();
   float dev_of_means = 0.0f;
   float var_of_vars = 0.0f;
 
@@ -3085,10 +3074,6 @@ static AOM_INLINE void choose_tx_size_type_from_rd(const AV1_COMP *const cpi,
     init_depth = get_search_init_depth(mi_size_wide[bs], mi_size_high[bs],
                                        is_inter_block(mbmi), &cpi->sf,
                                        txfm_params->tx_size_search_method);
-    if (init_depth == MAX_TX_DEPTH && !cpi->oxcf.txfm_cfg.enable_tx64 &&
-        txsize_sqr_up_map[start_tx] == TX_64X64) {
-      start_tx = sub_tx_size_map[start_tx];
-    }
   } else {
     const TX_SIZE chosen_tx_size =
         tx_size_from_tx_mode(bs, txfm_params->tx_mode_search_type);
@@ -3178,7 +3163,8 @@ static AOM_INLINE void block_rd_txfm(int plane, int block, int blk_row,
   }
 
 #if CONFIG_RD_DEBUG
-  update_txb_coeff_cost(&this_rd_stats, plane, this_rd_stats.rate);
+  update_txb_coeff_cost(&this_rd_stats, plane, blk_row, blk_col,
+                        this_rd_stats.rate);
 #endif  // CONFIG_RD_DEBUG
   av1_set_txb_context(x, plane, block, tx_size, a, l);
 

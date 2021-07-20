@@ -37,7 +37,7 @@ typedef struct {
 
 /*!\brief Miscellaneous arguments for inter mode search.
  */
-typedef struct HandleInterModeArgs {
+typedef struct {
   /*!
    * Buffer for the above predictor in OBMC
    */
@@ -139,16 +139,6 @@ typedef struct HandleInterModeArgs {
    * Estimated cmp mode.
    */
   int cmp_mode[MODE_CTX_REF_FRAMES];
-  /*!
-   * The best sse during single new_mv search. Note that the sse here comes from
-   * single_motion_search, and not from interpolation_filter_search. This has
-   * two implications:
-   * 1. The mv used to calculate the sse here does not have to be the best sse
-   *    found in handle_inter_mode.
-   * 2. Even if the mvs agree, the sse here can differ from the sse in \ref
-   *    MACROBLOCK::pred_sse due to different interpolation filter used.
-   */
-  unsigned int best_single_sse_in_refs[REF_FRAMES];
 } HandleInterModeArgs;
 
 /*!\cond */

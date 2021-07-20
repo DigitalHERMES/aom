@@ -32,10 +32,6 @@ extern "C" {
 
 /*!
  * \brief The stucture of acummulated frame stats in the first pass.
- *
- * Errors (coded_error, intra_error, etc.) and counters (new_mv_count) are
- * normalized to each MB. MV related stats (MVc, MVr, etc.) are normalized to
- * the frame width and height. See function normalize_firstpass_stats.
  */
 typedef struct {
   /*!
@@ -66,6 +62,10 @@ typedef struct {
    */
   double sr_coded_error;
   /*!
+   * Best of intra pred error and inter pred error using altref frame as ref.
+   */
+  double tr_coded_error;
+  /*!
    * Percentage of blocks with inter pred error < intra pred error.
    */
   double pcnt_inter;
@@ -79,6 +79,10 @@ typedef struct {
    * inter pred error using golden frame < intra pred error
    */
   double pcnt_second_ref;
+  /*!
+   * Percentage of blocks where altref frame was better than intra, last, golden
+   */
+  double pcnt_third_ref;
   /*!
    * Percentage of blocks where intra and inter prediction errors were very
    * close. Note that this is a 'weighted count', that is, the so blocks may be
@@ -148,18 +152,6 @@ typedef struct {
    * standard deviation for (0, 0) motion prediction error
    */
   double raw_error_stdev;
-  /*!
-   * Whether the frame contains a flash
-   */
-  int64_t is_flash;
-  /*!
-   * Estimated noise variance
-   */
-  double noise_var;
-  /*!
-   * Correlation coefficient with the previous frame
-   */
-  double cor_coeff;
 } FIRSTPASS_STATS;
 
 /*!\cond */
@@ -176,7 +168,7 @@ enum {
  * \brief  Data related to the current GF/ARF group and the
  * individual frames within the group
  */
-typedef struct GF_GROUP {
+typedef struct {
   /*!\cond */
   // Frame update type, e.g. ARF/GF/LF/Overlay
   FRAME_UPDATE_TYPE update_type[MAX_STATIC_GF_GROUP_LENGTH];
@@ -197,31 +189,6 @@ typedef struct GF_GROUP {
   REFBUF_STATE refbuf_state[MAX_STATIC_GF_GROUP_LENGTH];
   int arf_index;  // the index in the gf group of ARF, if no arf, then -1
   int size;       // The total length of a GOP
-#if CONFIG_FRAME_PARALLEL_ENCODE
-  // Indicates the level of parallelism in frame parallel encodes.
-  // 0 : frame is independently encoded (not part of parallel encodes).
-  // 1 : frame is the first in encode order in a given parallel encode set.
-  // 2 : frame occurs later in encode order in a given parallel encode set.
-  int frame_parallel_level[MAX_STATIC_GF_GROUP_LENGTH];
-  // Indicates whether a frame should act as non-reference frame.
-  // 0 : frame is a reference frame.
-  // 1 : frame is a non-reference frame.
-  int is_frame_non_ref[MAX_STATIC_GF_GROUP_LENGTH];
-
-  // The offset into lookahead_ctx for choosing
-  // source of frame parallel encodes.
-  int src_offset[MAX_STATIC_GF_GROUP_LENGTH];
-#if CONFIG_FRAME_PARALLEL_ENCODE_2
-  // Stores the display order hint of each frame in the current GF_GROUP.
-  int display_idx[MAX_STATIC_GF_GROUP_LENGTH];
-  // Stores the display order hint of the frames not to be
-  // refreshed by the current frame.
-  int skip_frame_refresh[MAX_STATIC_GF_GROUP_LENGTH][REF_FRAMES];
-  // Stores the display order hint of the frame to be excluded during reference
-  // assignment.
-  int skip_frame_as_ref[MAX_STATIC_GF_GROUP_LENGTH];
-#endif  // CONFIG_FRAME_PARALLEL_ENCODE_2
-#endif  // CONFIG_FRAME_PARALLEL_ENCODE
   /*!\endcond */
 } GF_GROUP;
 /*!\cond */
@@ -269,7 +236,7 @@ typedef struct {
   int64_t kf_group_bits;
 
   // Error score of frames still to be coded in kf group
-  double kf_group_error_left;
+  int64_t kf_group_error_left;
 
   // Over time correction for bits per macro block estimation
   double bpm_factor;
@@ -301,6 +268,8 @@ typedef struct {
   int64_t coded_error;
   // Best of intra pred error and inter pred error using golden frame as ref.
   int64_t sr_coded_error;
+  // Best of intra pred error and inter pred error using altref frame as ref.
+  int64_t tr_coded_error;
   // Count of motion vector.
   int mv_count;
   // Count of blocks that pick inter prediction (inter pred error is smaller
@@ -308,6 +277,8 @@ typedef struct {
   int inter_count;
   // Count of blocks that pick second ref (golden frame).
   int second_ref_count;
+  // Count of blocks that pick third ref (altref frame).
+  int third_ref_count;
   // Count of blocks where the inter and intra are very close and very low.
   double neutral_count;
   // Count of blocks where intra error is very small.
@@ -353,15 +324,6 @@ struct AV1_COMP;
 struct EncodeFrameParams;
 struct AV1EncoderConfig;
 struct TileDataEnc;
-
-static INLINE int is_fp_wavelet_energy_invalid(
-    const FIRSTPASS_STATS *fp_stats) {
-  return (fp_stats->frame_avg_wavelet_energy < 0);
-}
-
-static INLINE BLOCK_SIZE get_fp_block_size(int is_screen_content_type) {
-  return (is_screen_content_type ? BLOCK_8X8 : BLOCK_16X16);
-}
 
 int av1_get_unit_rows_in_tile(TileInfo tile, const BLOCK_SIZE fp_block_size);
 int av1_get_unit_cols_in_tile(TileInfo tile, const BLOCK_SIZE fp_block_size);

@@ -27,8 +27,8 @@
 #if CONFIG_AV1_TEMPORAL_DENOISING
 // For SVC: only do noise estimation on top spatial layer.
 static INLINE int noise_est_svc(const struct AV1_COMP *const cpi) {
-  return (!cpi->ppi->use_svc ||
-          (cpi->ppi->use_svc &&
+  return (!cpi->use_svc ||
+          (cpi->use_svc &&
            cpi->svc.spatial_layer_id == cpi->svc.number_spatial_layers - 1));
 }
 #endif
@@ -61,7 +61,7 @@ static int enable_noise_estimation(AV1_COMP *const cpi) {
         cpi->common.height != resize_pending_params->height));
 
 #if CONFIG_AV1_HIGHBITDEPTH
-  if (cpi->common.seq_params->use_highbitdepth) return 0;
+  if (cpi->common.seq_params.use_highbitdepth) return 0;
 #endif
 // Enable noise estimation if denoising is on.
 #if CONFIG_AV1_TEMPORAL_DENOISING
@@ -73,9 +73,9 @@ static int enable_noise_estimation(AV1_COMP *const cpi) {
   // Enabled for 1 pass CBR, speed >=5, and if resolution is same as original.
   // Not enabled for SVC mode and screen_content_mode.
   // Not enabled for low resolutions.
-  if (cpi->oxcf.pass == AOM_RC_ONE_PASS && cpi->oxcf.rc_cfg.mode == AOM_CBR &&
+  if (cpi->oxcf.pass == 0 && cpi->oxcf.rc_cfg.mode == AOM_CBR &&
       cpi->oxcf.q_cfg.aq_mode == CYCLIC_REFRESH_AQ && cpi->oxcf.speed >= 5 &&
-      resize_pending == 0 && !cpi->ppi->use_svc &&
+      resize_pending == 0 && !cpi->use_svc &&
       cpi->oxcf.tune_cfg.content != AOM_CONTENT_SCREEN &&
       cpi->common.width * cpi->common.height >= 640 * 360)
     return 1;
@@ -227,7 +227,7 @@ void av1_update_noise_estimate(AV1_COMP *const cpi) {
             unsigned int sse;
             // Compute variance between co-located blocks from current and
             // last input frames.
-            unsigned int variance = cpi->ppi->fn_ptr[bsize].vf(
+            unsigned int variance = cpi->fn_ptr[bsize].vf(
                 src_y, src_ystride, last_src_y, last_src_ystride, &sse);
             unsigned int hist_index = variance / bin_size;
             if (hist_index < MAX_VAR_HIST_BINS)

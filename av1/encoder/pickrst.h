@@ -16,6 +16,7 @@ extern "C" {
 #endif
 
 #include "av1/encoder/encoder.h"
+#include "aom_ports/system_state.h"
 
 struct yv12_buffer_config;
 struct AV1_COMP;

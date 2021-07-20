@@ -26,7 +26,7 @@
 #include "av1/encoder/partition_cnn_weights.h"
 #endif
 
-#include "av1/encoder/hash_motion.h"
+#include "av1/encoder/hash.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -834,14 +834,6 @@ typedef struct {
   int lighting_change;
   int low_sumdiff;
 } CONTENT_STATE_SB;
-
-// Structure to hold pixel level gradient info.
-typedef struct {
-  uint16_t abs_dx_abs_dy_sum;
-  int8_t hist_bin_idx;
-  bool is_dx_zero;
-} PixelLevelGradientInfo;
-
 /*!\endcond */
 
 /*! \brief Encoder's parameters related to the current coding block.
@@ -1044,10 +1036,6 @@ typedef struct macroblock {
   int pred_mv_sad[REF_FRAMES];
   //! The minimum of \ref pred_mv_sad.
   int best_pred_mv_sad;
-  //! The sad of the 1st mv ref (nearest).
-  int pred_mv0_sad[REF_FRAMES];
-  //! The sad of the 2nd mv ref (near).
-  int pred_mv1_sad[REF_FRAMES];
 
   /*! \brief Disables certain ref frame pruning based on tpl.
    *
@@ -1185,15 +1173,6 @@ typedef struct macroblock {
   /*! \brief The mode to reuse during \ref av1_rd_pick_intra_mode_sb and
    *  \ref av1_rd_pick_inter_mode. */
   const MB_MODE_INFO *mb_mode_cache;
-  /*! \brief Pointer to the buffer which caches gradient information.
-   *
-   * Pointer to the array of structures to store gradient information of each
-   * pixel in a superblock. The buffer constitutes of MAX_SB_SQUARE pixel level
-   * structures for each of the plane types (PLANE_TYPE_Y and PLANE_TYPE_UV).
-   */
-  PixelLevelGradientInfo *pixel_gradient_info;
-  /*! \brief Flags indicating the availability of cached gradient info. */
-  bool is_sb_gradient_cached[PLANE_TYPES];
   /**@}*/
 
   /*****************************************************************************
@@ -1238,8 +1217,6 @@ typedef struct macroblock {
    * Used in REALTIME coding mode to enhance the visual quality at the boundary
    * of moving color objects.
    */
-  uint8_t color_sensitivity_sb[2];
-  //! Color sensitivity flag for the coding block.
   uint8_t color_sensitivity[2];
   /**@}*/
 
@@ -1260,27 +1237,6 @@ typedef struct macroblock {
 #undef SINGLE_REF_MODES
 
 /*!\cond */
-// Zeroes out 'n_stats' elements in the array x->winner_mode_stats.
-// It only zeroes out what is necessary in 'color_index_map' (just the block
-// size, not the whole array).
-static INLINE void zero_winner_mode_stats(BLOCK_SIZE bsize, int n_stats,
-                                          WinnerModeStats *stats) {
-  const int block_height = block_size_high[bsize];
-  const int block_width = block_size_wide[bsize];
-  for (int i = 0; i < n_stats; ++i) {
-    WinnerModeStats *const stat = &stats[i];
-    memset(&stat->mbmi, 0, sizeof(stat->mbmi));
-    memset(&stat->rd_cost, 0, sizeof(stat->rd_cost));
-    memset(&stat->rd, 0, sizeof(stat->rd));
-    memset(&stat->rate_y, 0, sizeof(stat->rate_y));
-    memset(&stat->rate_uv, 0, sizeof(stat->rate_uv));
-    // Do not reset the whole array as it is CPU intensive.
-    memset(&stat->color_index_map, 0,
-           block_width * block_height * sizeof(stat->color_index_map[0]));
-    memset(&stat->mode_index, 0, sizeof(stat->mode_index));
-  }
-}
-
 static INLINE int is_rect_tx_allowed_bsize(BLOCK_SIZE bsize) {
   static const char LUT[BLOCK_SIZES_ALL] = {
     0,  // BLOCK_4X4

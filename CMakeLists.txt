@@ -23,11 +23,6 @@ endif()
 
 project(AOM C CXX)
 
-# GENERATED source property global visibility.
-if(POLICY CMP0118)
-  cmake_policy(SET CMP0118 NEW)
-endif()
-
 if(NOT EMSCRIPTEN)
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE
@@ -55,9 +50,6 @@ set(SO_FILE_VERSION "${SO_VERSION}.${LT_AGE}.${LT_REVISION}")
 unset(LT_CURRENT)
 unset(LT_REVISION)
 unset(LT_AGE)
-
-# Enable generators like Xcode and Visual Studio to place projects in folders.
-set_property(GLOBAL PROPERTY USE_FOLDERS TRUE)
 
 include("${AOM_ROOT}/build/cmake/aom_configure.cmake")
 include("${AOM_ROOT}/aom_dsp/aom_dsp.cmake")
@@ -137,7 +129,6 @@ list(APPEND AOM_SOURCES
             "${AOM_ROOT}/aom/aom_codec.h"
             "${AOM_ROOT}/aom/aom_decoder.h"
             "${AOM_ROOT}/aom/aom_encoder.h"
-            "${AOM_ROOT}/aom/aom_external_partition.h"
             "${AOM_ROOT}/aom/aom_frame_buffer.h"
             "${AOM_ROOT}/aom/aom_image.h"
             "${AOM_ROOT}/aom/aom_integer.h"
@@ -152,8 +143,8 @@ list(APPEND AOM_SOURCES
             "${AOM_ROOT}/aom/src/aom_integer.c")
 
 list(APPEND AOM_COMMON_APP_UTIL_SOURCES
-            "${AOM_ROOT}/av1/arg_defs.c"
             "${AOM_ROOT}/av1/arg_defs.h"
+            "${AOM_ROOT}/av1/arg_defs.c"
             "${AOM_ROOT}/common/args_helper.c"
             "${AOM_ROOT}/common/args_helper.h"
             "${AOM_ROOT}/common/args.c"
@@ -326,23 +317,19 @@ file(WRITE "${AOM_GEN_SRC_DIR}/usage_exit.cc"
 #
 if(ENABLE_EXAMPLES OR ENABLE_TESTS OR ENABLE_TOOLS)
   add_library(aom_common_app_util OBJECT ${AOM_COMMON_APP_UTIL_SOURCES})
-  set_property(TARGET ${example} PROPERTY FOLDER examples)
   if(CONFIG_AV1_DECODER)
     add_library(aom_decoder_app_util OBJECT ${AOM_DECODER_APP_UTIL_SOURCES})
-    set_property(TARGET ${example} PROPERTY FOLDER examples)
     # obudec depends on internal headers that require *rtcd.h
     add_dependencies(aom_decoder_app_util aom_rtcd)
   endif()
   if(CONFIG_AV1_ENCODER)
     add_library(aom_encoder_app_util OBJECT ${AOM_ENCODER_APP_UTIL_SOURCES})
-    set_property(TARGET ${example} PROPERTY FOLDER examples)
   endif()
 endif()
 
 if((CONFIG_AV1_DECODER OR CONFIG_AV1_ENCODER) AND ENABLE_EXAMPLES)
   add_executable(resize_util "${AOM_ROOT}/examples/resize_util.c"
                              $<TARGET_OBJECTS:aom_common_app_util>)
-  set_property(TARGET ${example} PROPERTY FOLDER examples)
   list(APPEND AOM_APP_TARGETS resize_util)
 endif()
 
@@ -728,17 +715,6 @@ if(ENABLE_EXAMPLES AND "${CMAKE_GENERATOR}" MATCHES "Makefiles$")
 endif()
 
 if(BUILD_SHARED_LIBS)
-  if(NOT WIN32 AND NOT APPLE)
-    # The -z defs linker option reports unresolved symbol references from object
-    # files when building a shared library.
-    if("${CMAKE_VERSION}" VERSION_LESS "3.13")
-      # target_link_options() is not available before CMake 3.13.
-      target_link_libraries(aom PRIVATE -Wl,-z,defs)
-    else()
-      target_link_options(aom PRIVATE LINKER:-z,defs)
-    endif()
-  endif()
-
   include("${AOM_ROOT}/build/cmake/exports.cmake")
   setup_exports_target()
 endif()
@@ -794,14 +770,12 @@ endif()
 if(ENABLE_EXAMPLES)
   foreach(example ${AOM_EXAMPLE_TARGETS})
     list(APPEND AOM_DIST_EXAMPLES $<TARGET_FILE:${example}>)
-    set_property(TARGET ${example} PROPERTY FOLDER examples)
   endforeach()
 endif()
 
 if(ENABLE_TOOLS)
   foreach(tool ${AOM_TOOL_TARGETS})
     list(APPEND AOM_DIST_TOOLS $<TARGET_FILE:${tool}>)
-    set_property(TARGET ${tool} PROPERTY FOLDER tools)
   endforeach()
 endif()
 
